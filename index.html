@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b4036">
+  <title>Financial Statement Workbench</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172b29;
+      --muted: #687976;
+      --green: #0b4036;
+      --green-2: #126151;
+      --mint: #eaf3ef;
+      --line: #d8e1de;
+      --panel: #fff;
+      --canvas: #f2f6f5;
+      --amber: #9a5b0b;
+      --amber-bg: #fff4df;
+      --red: #b4232d;
+      --red-bg: #fff0f0;
+      --blue: #365b96;
+      --blue-bg: #edf2fb;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      font-synthesis: none;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .topbar {
+      min-height: 68px; padding: 12px 24px; display: flex; align-items: center; gap: 18px;
+      color: #fff; background: var(--green); border-bottom: 1px solid #2b6558;
+    }
+    .brand-mark { width: 36px; height: 36px; flex: none; display: grid; place-items: center; }
+    .brand-mark svg { width: 34px; height: 34px; }
+    .brand { font-size: 21px; font-weight: 700; white-space: nowrap; }
+    .top-company { min-width: 100px; max-width: 265px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 20px; border-left: 1px solid #467468; color: #e3efeb; }
+    .top-fy { white-space: nowrap; padding-left: 18px; border-left: 1px solid #467468; color: #e3efeb; }
+    .draft-pill { padding: 6px 13px; border-radius: 99px; background: #276b5b; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .top-actions { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .button { min-height: 38px; padding: 8px 13px; border: 1px solid #bdcbc7; border-radius: 6px; color: var(--ink); background: #fff; font-size: 13px; font-weight: 650; transition: background .15s, border-color .15s; }
+    .button:hover { border-color: var(--green-2); background: #f4faf7; }
+    .button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .tab:focus-visible { outline: 3px solid #90b8ad; outline-offset: 2px; }
+    .button-dark { background: var(--green); border-color: var(--green); color: white; }
+    .button-dark:hover { background: var(--green-2); color: white; }
+    .button-small { min-height: 32px; padding: 6px 10px; font-size: 12px; }
+    .topbar .button { min-height: 36px; border-color: #c0d4ce; color: white; background: transparent; }
+    .topbar .button:hover { background: #1b594c; }
+    .steps { margin: 12px 18px 0; display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); border: 1px solid var(--line); border-radius: 7px; background: #fff; overflow: hidden; }
+    .step { display: flex; min-height: 54px; align-items: center; gap: 11px; padding: 9px 16px; color: #6b7b78; border-right: 1px solid var(--line); font-size: 13px; font-weight: 650; }
+    .step:last-child { border: 0; }
+    .step-number { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid #c5d1ce; border-radius: 50%; background: #f5f8f7; color: #425653; }
+    .step.active { color: var(--green); background: #f2f8f5; box-shadow: inset 0 -3px var(--green); }
+    .step.active .step-number, .step.done .step-number { background: var(--green); border-color: var(--green); color: white; }
+    .step.done { color: var(--green-2); }
+    main { display: grid; grid-template-columns: minmax(245px, 286px) minmax(480px, 1fr) minmax(250px, 300px); gap: 13px; margin: 13px 18px; align-items: start; }
+    .column { min-width: 0; display: flex; flex-direction: column; gap: 11px; }
+    .card, .workspace { border: 1px solid var(--line); border-radius: 7px; background: var(--panel); box-shadow: 0 1px 2px #153a3210; }
+    .card-heading { padding: 11px 13px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 750; color: #214b42; }
+    .card-body { padding: 12px 13px; }
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 11px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label, .field-label { font-size: 12px; font-weight: 650; color: #314440; }
+    .field input, .field select, .field textarea, .search-input {
+      width: 100%; min-height: 36px; padding: 7px 9px; border: 1px solid #cbd6d3; border-radius: 5px; color: var(--ink); background: #fff;
+    }
+    .field input[readonly] { background: #f2f5f4; color: #5a6b67; }
+    .field textarea { min-height: 67px; resize: vertical; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+    .checks { display: grid; gap: 12px; }
+    .check-row { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; line-height: 1.45; color: #354744; }
+    .check-row input { margin: 2px 0 0; accent-color: var(--green); }
+    .workspace { min-height: 660px; overflow: hidden; }
+    .tabs { display: flex; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--line); background: #fbfdfc; }
+    .tab { min-height: 47px; padding: 11px 15px; border: 0; border-right: 1px solid var(--line); border-bottom: 3px solid transparent; white-space: nowrap; color: #43534f; background: transparent; font-weight: 650; font-size: 12px; }
+    .tab.active { color: var(--green); background: white; border-bottom-color: var(--green); }
+    .workspace-body { padding: 13px; }
+    .notice { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; padding: 10px 12px; border-radius: 5px; background: var(--mint); color: #274d43; font-size: 12px; }
+    .notice.warning { background: var(--amber-bg); color: #75420b; }
+    .notice.error { background: var(--red-bg); color: #8e1820; }
+    .notice.info { background: var(--blue-bg); color: #294773; }
+    .notice-icon { font-size: 16px; font-weight: 800; }
+    .sheet { min-height: 525px; padding: 22px 22px 18px; border: 1px solid #e0e6e4; border-radius: 5px; background: linear-gradient(#fff, #fff 96%, #fcfdfd); }
+    .statement-header { margin: 3px 0 17px; text-align: center; }
+    .statement-header h1 { margin: 0 0 8px; font: 700 21px/1.25 Georgia, "Times New Roman", serif; color: #142b26; }
+    .statement-header h2 { margin: 0 0 8px; font: 700 15px/1.3 Georgia, "Times New Roman", serif; color: #263d37; }
+    .statement-header p { margin: 0; color: #536560; font-size: 11px; }
+    .draft-label { margin: 11px 0 9px; text-align: right; }
+    .badge { display: inline-block; padding: 5px 9px; border-radius: 99px; background: #e8eef7; color: #315180; font-size: 10px; font-weight: 750; letter-spacing: .02em; }
+    .badge.ok { color: #135544; background: #e4f2eb; }
+    .badge.warn { color: #87520d; background: #fff0d4; }
+    .statement-table, .mapping-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .statement-table th, .statement-table td { padding: 8px 9px; border: 1px solid #dce3e1; text-align: left; }
+    .statement-table th { background: #f3f6f5; color: #2e4540; font-weight: 700; }
+    .statement-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .statement-table .group-row td { background: #edf2f0; font-weight: 750; }
+    .statement-table .total-row td { border-top: 2px solid #98aaa5; font-weight: 750; }
+    .statement-table .indent { padding-left: 22px; }
+    .notes-copy { margin-top: 14px; color: #475954; font-size: 11px; line-height: 1.65; }
+    .notes-copy strong { color: #283d38; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-bottom: 13px; }
+    .summary-stat { padding: 11px; border: 1px solid var(--line); border-radius: 5px; background: #fbfdfc; }
+    .summary-stat .value { font-size: 20px; font-weight: 750; color: var(--green); font-variant-numeric: tabular-nums; }
+    .summary-stat .label { margin-top: 4px; font-size: 10px; color: var(--muted); }
+    .mapping-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 11px; }
+    .mapping-table th, .mapping-table td { padding: 7px 6px; border-bottom: 1px solid #e5eae8; vertical-align: middle; }
+    .mapping-table th { text-align: left; color: #53645f; font-size: 10px; background: #f7f9f8; }
+    .mapping-table td { font-size: 11px; }
+    .mapping-table input, .mapping-table select { width: 100%; min-width: 86px; min-height: 31px; border: 1px solid #d3ddda; border-radius: 4px; padding: 4px 5px; background: white; font-size: 11px; color: var(--ink); }
+    .mapping-table .account-cell { min-width: 160px; }
+    .mapping-table .amount { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .table-wrap { overflow-x: auto; }
+    .compliance-item { margin-bottom: 9px; padding: 11px 11px 10px; border: 1px solid var(--line); border-radius: 5px; background: white; }
+    .compliance-item:last-child { margin-bottom: 0; }
+    .compliance-title { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 5px; font-size: 12px; font-weight: 750; }
+    .compliance-item p { margin: 0; color: #596a66; font-size: 11px; line-height: 1.45; }
+    .compliance-status { display: flex; align-items: center; gap: 7px; margin-top: 9px; font-size: 10px; font-weight: 750; }
+    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: #82918d; }
+    .status-dot.ok { background: #13735a; }
+    .status-dot.warn { background: #d38a19; }
+    .status-dot.bad { background: #cf3540; }
+    .status-dot.review { background: #4d70aa; }
+    .fine-print { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .output-bar { display: flex; flex-wrap: wrap; gap: 9px; margin: 0 18px 18px; }
+    .output-bar .button { min-height: 43px; padding: 10px 14px; }
+    .hidden { display: none !important; }
+    .empty { padding: 28px 16px; color: var(--muted); text-align: center; font-size: 13px; }
+    .mapping-filter { max-width: 235px; }
+    .draft-text { padding: 17px; border: 1px solid var(--line); border-radius: 5px; background: #fcfdfd; white-space: pre-wrap; font: 12px/1.7 Georgia, "Times New Roman", serif; }
+    dialog { width: min(680px, calc(100% - 28px)); max-height: 88vh; padding: 0; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 18px 55px #0d2e2760; }
+    dialog::backdrop { background: #102a25a6; }
+    .dialog-head, .dialog-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--line); }
+    .dialog-head h2 { margin: 0; font-size: 16px; }
+    .dialog-body { padding: 16px; }
+    .dialog-foot { justify-content: flex-end; border-top: 1px solid var(--line); border-bottom: 0; }
+    .dialog-body textarea { width: 100%; min-height: 270px; padding: 11px; border: 1px solid var(--line); border-radius: 5px; resize: vertical; font: 12px/1.5 "Segoe UI", sans-serif; }
+    .toast { position: fixed; right: 18px; bottom: 18px; z-index: 5; max-width: min(420px, calc(100vw - 36px)); padding: 12px 15px; border-radius: 6px; background: #173d34; color: white; box-shadow: 0 4px 16px #14282230; font-size: 13px; }
+    @media (max-width: 1150px) {
+      main { grid-template-columns: minmax(225px, 270px) minmax(420px, 1fr); }
+      .right-column { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .right-column > .card:first-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 760px) {
+      .topbar { padding: 11px 14px; flex-wrap: wrap; gap: 9px; }
+      .brand { font-size: 17px; }
+      .top-company, .top-fy { display: none; }
+      .top-actions { width: 100%; margin-left: 0; justify-content: flex-start; }
+      .top-actions .button { flex: 1; }
+      .steps { margin: 10px 10px 0; grid-template-columns: repeat(4, minmax(88px, 1fr)); overflow-x: auto; }
+      .step { min-height: 48px; padding: 7px; gap: 6px; font-size: 10px; }
+      .step-number { width: 23px; height: 23px; flex: none; }
+      main { display: flex; flex-direction: column; margin: 10px; }
+      .left-column, .center-column, .right-column { width: 100%; }
+      .workspace { min-height: 0; }
+      .workspace-body { padding: 9px; }
+      .sheet { min-height: 0; padding: 16px 10px; overflow-x: auto; }
+      .statement-header h1 { font-size: 17px; }
+      .statement-table { min-width: 550px; }
+      .summary-grid { grid-template-columns: 1fr 1fr 1fr; }
+      .right-column { display: flex; }
+      .output-bar { margin: 0 10px 14px; }
+      .output-bar .button { flex: 1 1 45%; }
+    }
+    @media print {
+      body { background: #fff; }
+      .topbar, .steps, .left-column, .right-column, .tabs, .output-bar, .notice, .mapping-toolbar { display: none !important; }
+      main { display: block; margin: 0; }
+      .center-column, .workspace { display: block; width: 100%; border: 0; box-shadow: none; }
+      .workspace-body { padding: 0; }
+      .sheet { border: 0; padding: 0; }
+      .statement-table { font-size: 10pt; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 40 40" fill="none"><path d="M20 3 37 11 20 19 3 11 20 3Z" stroke="currentColor" stroke-width="2"/><path d="m4 17 16 8 16-8M4 23l16 8 16-8M4 29l16 8 16-8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="brand">Financial Statement Workbench</div>
+    <div class="top-company" id="topCompany">ABC Manufacturing Pvt. Ltd.</div>
+    <div class="top-fy" id="topFY">FY 2025–26</div>
+    <span class="draft-pill">Working draft</span>
+    <div class="top-actions">
+      <button class="button" id="loadTrialBalanceBtn">Load trial balance</button>
+      <button class="button" id="saveFileBtn">Save working file</button>
+      <button class="button" id="openFileBtn">Open working file</button>
+      <button class="button" id="resetBtn">Reset demo</button>
+    </div>
+  </header>
+  <input class="hidden" id="trialBalanceInput" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt">
+  <input class="hidden" id="workingFileInput" type="file" accept=".json,application/json">
+  <nav class="steps" aria-label="Preparation workflow">
+    <div class="step active" data-step="1"><span class="step-number">1</span>Load trial balance</div>
+    <div class="step" data-step="2"><span class="step-number">2</span>Map accounts</div>
+    <div class="step" data-step="3"><span class="step-number">3</span>Review statements and notes</div>
+    <div class="step" data-step="4"><span class="step-number">4</span>Download drafts</div>
+  </nav>
+  <main>
+    <aside class="column left-column">
+      <section class="card">
+        <div class="card-heading">Financial year &amp; setup</div>
+        <div class="card-body">
+          <div class="field"><label for="companyName">Company name</label><input id="companyName" value="ABC Manufacturing Pvt. Ltd."></div>
+          <div class="field"><label for="cin">CIN</label><input id="cin" value="U74999MH2010PTC203456"></div>
+          <div class="field"><label for="address">Registered office</label><textarea id="address">Mumbai, Maharashtra, India</textarea></div>
+          <div class="field-grid">
+            <div class="field"><label for="financialYear">Financial year</label><input id="financialYear" value="2025-26"></div>
+            <div class="field"><label for="reportingUnit">Reporting unit</label><select id="reportingUnit"><option value="₹ lakh">₹ lakh</option><option value="₹">₹</option><option value="₹ thousand">₹ thousand</option><option value="₹ crore">₹ crore</option></select></div>
+          </div>
+          <div class="field"><label for="framework">Reporting framework</label><select id="framework"><option>Division I — AS framework</option><option>Division II — Ind AS framework</option></select></div>
+          <div class="field"><label for="yearEnd">Year-end date</label><input id="yearEnd" type="date" value="2026-03-31"></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-heading">Board &amp; preparation details</div>
+        <div class="card-body">
+          <div class="field-grid">
+            <div class="field"><label for="meetingDate">Board meeting date</label><input id="meetingDate" type="date"></div>
+            <div class="field"><label for="meetingTime">Meeting time</label><input id="meetingTime" type="time"></div>
+          </div>
+          <div class="field"><label for="meetingVenue">Meeting venue</label><input id="meetingVenue" placeholder="Registered office / video conference"></div>
+          <div class="field"><label for="chairperson">Chairperson / authorised signatory</label><input id="chairperson" placeholder="Enter name"></div>
+          <div class="field"><label for="auditor">Statutory auditor</label><input id="auditor" placeholder="Enter firm / auditor name"></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-heading">Preparation controls</div>
+        <div class="card-body checks">
+          <label class="check-row"><input type="checkbox" id="comparative" checked> <span>Include comparative figures (previous year)</span></label>
+          <label class="check-row"><input type="checkbox" id="cashFlowApplicable" checked> <span>Cash flow statement applicable (Section 2(40))</span></label>
+          <label class="check-row"><input type="checkbox" id="consolidated"> <span>Prepare consolidated statements (if applicable)</span></label>
+        </div>
+      </section>
+    </aside>
+    <section class="column center-column">
+      <div class="workspace">
+        <nav class="tabs" aria-label="Statement sections">
+          <button class="tab active" data-view="overview">Overview</button>
+          <button class="tab" data-view="balance">Balance Sheet</button>
+          <button class="tab" data-view="profit">Profit &amp; Loss</button>
+          <button class="tab" data-view="cashflow">Cash Flow</button>
+          <button class="tab" data-view="notes">Notes to Accounts</button>
+          <button class="tab" data-view="board">Board approval</button>
+          <button class="tab hidden" data-view="mapping" id="mappingTab">Map accounts</button>
+        </nav>
+        <div class="workspace-body">
+          <div id="overviewNotice" class="notice"><span class="notice-icon">ⓘ</span><span id="overviewNoticeText">Loading trial balance…</span></div>
+          <div id="viewContent"></div>
+        </div>
+      </div>
+    </section>
+    <aside class="column right-column">
+      <section class="card">
+        <div class="card-heading">Compliance checks</div>
+        <div class="card-body" id="complianceChecks"></div>
+      </section>
+      <section class="card">
+        <div class="card-heading">Review checklist</div>
+        <div class="card-body checks">
+          <label class="check-row"><input type="checkbox" class="review-check"> <span>Trial balance agrees to signed ledger</span></label>
+          <label class="check-row"><input type="checkbox" class="review-check"> <span>Material balances supported by schedules</span></label>
+          <label class="check-row"><input type="checkbox" class="review-check"> <span>Related party and contingent liability disclosures reviewed</span></label>
+          <label class="check-row"><input type="checkbox" class="review-check"> <span>Board approval and audit report status confirmed</span></label>
+        </div>
+      </section>
+    </aside>
+  </main>
+  <div class="output-bar">
+    <button class="button button-dark" id="printBtn">Preview / print</button>
+    <button class="button" id="wordBtn">Download Word draft</button>
+    <button class="button" id="exportBtn">Export statements</button>
+    <button class="button" id="emailBtn">Prepare review email</button>
+    <button class="button" id="packBtn">Download draft pack</button>
+  </div>
+  <dialog id="emailDialog">
+    <div class="dialog-head"><h2>Review email draft</h2><button class="button button-small" id="closeEmailBtn" aria-label="Close">Close</button></div>
+    <div class="dialog-body"><p class="fine-print">Review and edit the message before copying it into your email client.</p><textarea id="emailText" aria-label="Email draft"></textarea></div>
+    <div class="dialog-foot"><button class="button" id="copyEmailBtn">Copy email text</button><button class="button button-dark" id="mailtoBtn">Open email draft</button></div>
+  </dialog>
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+  <script>
+  (() => {
+    "use strict";
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+    const demoAccounts = [
+      ["101001","Equity Share Capital (Face Value ₹10)","Equity",-20,-20,"Balance Sheet","Equity and Liabilities","Share Capital","1"],
+      ["102001","General Reserve","Equity",-15,-15,"Balance Sheet","Equity and Liabilities","Other Equity","2"],
+      ["102002","Surplus / Retained Earnings (Opening)","Equity",-13,-8,"Balance Sheet","Equity and Liabilities","Other Equity","2"],
+      ["201001","Term Loan from HDFC Bank (Secured)","Non-Current Liability",-10,-12,"Balance Sheet","Equity and Liabilities","Long-Term Borrowings","3"],
+      ["201002","Deferred Tax Liabilities (Net)","Non-Current Liability",-3.5,-4,"Balance Sheet","Equity and Liabilities","Deferred Tax Liabilities (Net)","3"],
+      ["201003","Provision for Employee Retirement Benefits","Non-Current Liability",-1.5,-2,"Balance Sheet","Equity and Liabilities","Long-Term Provisions","3"],
+      ["202001","Cash Credit / Working Capital Facility (SBI)","Current Liability",-12,-10,"Balance Sheet","Equity and Liabilities","Short-Term Borrowings","4"],
+      ["202002","Sundry Creditors for Raw Materials (MSME)","Current Liability",-8.5,-7,"Balance Sheet","Equity and Liabilities","Trade Payables","4"],
+      ["202003","Sundry Creditors for Operational Expenses","Current Liability",-6.5,-6,"Balance Sheet","Equity and Liabilities","Trade Payables","4"],
+      ["202004","Advance Received from Customers","Current Liability",-3,-2.5,"Balance Sheet","Equity and Liabilities","Other Current Liabilities","4"],
+      ["202005","Statutory Dues Payable (GST & TDS)","Current Liability",-2.2,-2,"Balance Sheet","Equity and Liabilities","Other Current Liabilities","4"],
+      ["202006","Provision for Income Tax (Current Year)","Current Liability",-2.8,-2.5,"Balance Sheet","Equity and Liabilities","Short-Term Provisions","4"],
+      ["301001","Plant & Machinery (Gross Block)","Non-Current Asset",42,38,"Balance Sheet","Assets","Property, Plant & Equipment","5"],
+      ["301002","Factory Equipment & Tools","Non-Current Asset",12,10,"Balance Sheet","Assets","Property, Plant & Equipment","5"],
+      ["301003","Accumulated Depreciation on PPE","Contra Asset",-11,-8.5,"Balance Sheet","Assets","Property, Plant & Equipment","5"],
+      ["301004","Capital Work-in-Progress (Machinery under installation)","Non-Current Asset",3,2.5,"Balance Sheet","Assets","Capital Work-in-Progress","5"],
+      ["301005","Security Deposits with Electricity Board & Govt","Non-Current Asset",2,2,"Balance Sheet","Assets","Long-Term Loans and Advances","5"],
+      ["302001","Raw Materials Inventory","Current Asset",16,14,"Balance Sheet","Assets","Inventories","6"],
+      ["302002","Finished Goods Inventory","Current Asset",12,11,"Balance Sheet","Assets","Inventories","6"],
+      ["302003","Trade Receivables (Outstanding < 6 months)","Current Asset",20,18,"Balance Sheet","Assets","Trade Receivables","6"],
+      ["302004","Cash at Bank (Current Accounts)","Current Asset",6.5,6,"Balance Sheet","Assets","Cash and Cash Equivalents","6"],
+      ["302005","Prepaid Insurance & Operational Advances","Current Asset",2.5,3,"Balance Sheet","Assets","Short-Term Loans and Advances","6"],
+      ["401001","Revenue from Sale of Manufactured Products","Revenue",-120,-105,"Profit & Loss","Revenue","Revenue from Operations","7"],
+      ["402001","Interest Income on Fixed Deposits","Revenue",-2,-1.5,"Profit & Loss","Revenue","Other Income","8"],
+      ["501001","Cost of Materials Consumed","Expense",65,58,"Profit & Loss","Expenses","Cost of Materials Consumed","9"],
+      ["502001","Employee Benefit Expenses (Salaries & Wages)","Expense",22,19.5,"Profit & Loss","Expenses","Employee Benefit Expenses","10"],
+      ["503001","Finance Costs (Interest on Term Loans & CC)","Expense",3.2,3.5,"Profit & Loss","Expenses","Finance Costs","11"],
+      ["504001","Depreciation & Amortisation Expense","Expense",4,3.5,"Profit & Loss","Expenses","Depreciation & Amortisation","12"],
+      ["505001","Power, Fuel & Manufacturing Overheads","Expense",11,10,"Profit & Loss","Expenses","Other Expenses","13"],
+      ["506001","Current Tax Expense","Expense",2.8,2.5,"Profit & Loss","Expenses","Tax Expense","14"],
+      ["506002","Deferred Tax Charge / (Credit)","Expense",0,4.5,"Profit & Loss","Expenses","Tax Expense","14"],
+      ["102003","Current Year Profit Transferred to Reserves","Equity",7,0,"Balance Sheet","Equity and Liabilities","Other Equity","2"]
+    ];
+    const mappings = {
+      "Balance Sheet": {
+        "Equity and Liabilities": ["Share Capital","Other Equity","Long-Term Borrowings","Deferred Tax Liabilities (Net)","Long-Term Provisions","Short-Term Borrowings","Trade Payables","Other Current Liabilities","Short-Term Provisions"],
+        "Assets": ["Property, Plant & Equipment","Capital Work-in-Progress","Long-Term Loans and Advances","Inventories","Trade Receivables","Cash and Cash Equivalents","Short-Term Loans and Advances"]
+      },
+      "Profit & Loss": {
+        "Revenue": ["Revenue from Operations","Other Income"],
+        "Expenses": ["Cost of Materials Consumed","Employee Benefit Expenses","Finance Costs","Depreciation & Amortisation","Other Expenses","Tax Expense"]
+      }
+    };
+    let accounts = [];
+    let activeView = "overview";
+    let toastTimer;
+
+    function makeDemo() {
+      accounts = demoAccounts.map(([code, description, type, current, previous, statement, major, minor, note]) => ({
+        code, description, type, current, previous, statement, major, minor, note, review: false
+      }));
+      $("#companyName").value = "ABC Manufacturing Pvt. Ltd.";
+      $("#cin").value = "U74999MH2010PTC203456";
+      $("#address").value = "Mumbai, Maharashtra, India";
+      $("#financialYear").value = "2025-26";
+      $("#yearEnd").value = "2026-03-31";
+      $("#framework").selectedIndex = 0;
+      $("#reportingUnit").value = "₹ lakh";
+      $("#meetingDate").value = "";
+      $("#meetingTime").value = "";
+      $("#meetingVenue").value = "";
+      $("#chairperson").value = "";
+      $("#auditor").value = "";
+      $("#comparative").checked = true;
+      $("#cashFlowApplicable").checked = true;
+      $("#consolidated").checked = false;
+      $$(".review-check").forEach(check => { check.checked = false; });
+      activeView = "overview";
+      render();
+      notify("Demo trial balance loaded. Review the imported mappings before using draft outputs.");
+    }
+    function esc(value) {
+      return String(value == null ? "" : value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
+    function num(value) {
+      const n = Number(String(value == null ? "" : value).replace(/[,₹\s]/g, "").replace(/^\((.*)\)$/, "-$1"));
+      return Number.isFinite(n) ? n : 0;
+    }
+    function format(value, digits = 2) {
+      return new Intl.NumberFormat("en-IN", {minimumFractionDigits: digits, maximumFractionDigits: digits}).format(Number(value) || 0);
+    }
+    function cleanNumber(value) {
+      const n = Number(value) || 0;
+      return Math.abs(n) < 0.005 ? 0 : n;
+    }
+    function yearEndLabel() {
+      const date = $("#yearEnd").value ? new Date($("#yearEnd").value + "T00:00:00") : null;
+      if (!date || Number.isNaN(date.getTime())) return "31 March";
+      return date.toLocaleDateString("en-IN", {day:"2-digit", month:"long", year:"numeric"});
+    }
+    function priorYearEndLabel() {
+      const date = $("#yearEnd").value ? new Date($("#yearEnd").value + "T00:00:00") : null;
+      if (!date || Number.isNaN(date.getTime())) return "31 March";
+      date.setFullYear(date.getFullYear() - 1);
+      return date.toLocaleDateString("en-IN", {day:"2-digit", month:"long", year:"numeric"});
+    }
+    function statementAmount(account) {
+      if (account.statement === "Profit & Loss") return account.major === "Revenue" ? -num(account.current) : num(account.current);
+      return account.major === "Assets" ? num(account.current) : -num(account.current);
+    }
+    function previousAmount(account) {
+      if (account.statement === "Profit & Loss") return account.major === "Revenue" ? -num(account.previous) : num(account.previous);
+      return account.major === "Assets" ? num(account.previous) : -num(account.previous);
+    }
+    function total(predicate, previous = false) {
+      return accounts.reduce((sum, account) => sum + (predicate(account) ? (previous ? previousAmount(account) : statementAmount(account)) : 0), 0);
+    }
+    function profit(previous = false) {
+      const revenue = total(a => a.statement === "Profit & Loss" && a.major === "Revenue", previous);
+      const expense = total(a => a.statement === "Profit & Loss" && a.major === "Expenses", previous);
+      return revenue - expense;
+    }
+    function totalsByMinor(statement, major, previous = false) {
+      const grouped = new Map();
+      accounts.filter(a => a.statement === statement && (!major || a.major === major))
+        .forEach(a => grouped.set(a.minor || "Unmapped", (grouped.get(a.minor || "Unmapped") || 0) + (previous ? previousAmount(a) : statementAmount(a))));
+      if (statement === "Balance Sheet" && major === "Equity and Liabilities" && grouped.has("Other Equity")) {
+        grouped.set("Other Equity", grouped.get("Other Equity") + profit(previous));
+      }
+      return grouped;
+    }
+    function unmappedCount() {
+      return accounts.filter(a => !a.statement || !a.major || !a.minor || !mappings[a.statement]).length;
+    }
+    function trialBalanceNet(previous = false) {
+      return accounts.reduce((sum, account) => sum + num(previous ? account.previous : account.current), 0);
+    }
+    function balanceSheetTotals(previous = false) {
+      return {
+        liabilities: total(a => a.statement === "Balance Sheet" && a.major === "Equity and Liabilities", previous) + profit(previous),
+        assets: total(a => a.statement === "Balance Sheet" && a.major === "Assets", previous)
+      };
+    }
+    function currentPeriod() { return `As at ${yearEndLabel()}`; }
+    function previousPeriod() { return `As at ${priorYearEndLabel()}`; }
+    function amountCell(value) { return `<td class="num">${format(value)}</td>`; }
+    function statementHeader(title, subline) {
+      return `<div class="statement-header"><h1>${esc($("#companyName").value || "Company name")}</h1><h2>${esc(title)}</h2><p>${esc(subline)} · ${esc($("#framework").value)} · Figures in ${esc($("#reportingUnit").value)}</p></div><div class="draft-label"><span class="badge">WORKING DRAFT — SUBJECT TO PROFESSIONAL REVIEW</span></div>`;
+    }
+    function renderOverview() {
+      const bs = balanceSheetTotals();
+      const balancedTB = Math.abs(trialBalanceNet()) < 0.01;
+      const balanceDifference = bs.assets - bs.liabilities;
+      const revenue = total(a => a.statement === "Profit & Loss" && a.major === "Revenue");
+      const expenses = total(a => a.statement === "Profit & Loss" && a.major === "Expenses");
+      const comparison = $("#comparative").checked;
+      const balanceRows = [];
+      [["I. Equity and liabilities","Equity and Liabilities"],["II. Assets","Assets"]].forEach(([title, major]) => {
+        const subtotal = major === "Equity and Liabilities" ? bs.liabilities : bs.assets;
+        const prevSubtotal = major === "Equity and Liabilities" ? balanceSheetTotals(true).liabilities : balanceSheetTotals(true).assets;
+        balanceRows.push(`<tr class="group-row"><td>${title}</td><td></td>${amountCell(subtotal)}${comparison ? amountCell(prevSubtotal) : ""}</tr>`);
+        totalsByMinor("Balance Sheet", major).forEach((value, key) => {
+          const prev = totalsByMinor("Balance Sheet", major, true).get(key) || 0;
+          balanceRows.push(`<tr><td class="indent">${esc(key)}</td><td class="num">${esc(noteFor("Balance Sheet", major, key))}</td>${amountCell(value)}${comparison ? amountCell(prev) : ""}</tr>`);
+        });
+      });
+      const year = $("#financialYear").value || "Reporting period";
+      return `<div class="summary-grid">
+        <div class="summary-stat"><div class="value">${accounts.length}</div><div class="label">GL accounts loaded</div></div>
+        <div class="summary-stat"><div class="value">${accounts.filter(a => a.statement === "Balance Sheet").length > 0 ? 3 : 0}</div><div class="label">Draft statements</div></div>
+        <div class="summary-stat"><div class="value">${unmappedCount() ? unmappedCount() : "✓"}</div><div class="label">${unmappedCount() ? "Mappings to review" : "All accounts mapped"}</div></div>
+      </div>
+      <div class="sheet">${statementHeader("BALANCE SHEET", `AS AT ${yearEndLabel().toUpperCase()} · FY ${year}`)}
+        <div class="table-wrap"><table class="statement-table"><thead><tr><th>Particulars</th><th>Note</th><th class="num">${esc(currentPeriod())}</th>${comparison ? `<th class="num">${esc(previousPeriod())}</th>` : ""}</tr></thead><tbody>${balanceRows.join("")}<tr class="total-row"><td>Total equity and liabilities</td><td></td>${amountCell(bs.liabilities)}${comparison ? amountCell(balanceSheetTotals(true).liabilities) : ""}</tr><tr class="total-row"><td>Total assets</td><td></td>${amountCell(bs.assets)}${comparison ? amountCell(balanceSheetTotals(true).assets) : ""}</tr></tbody></table></div>
+        <div class="notes-copy"><strong>Draft review summary</strong><br>Revenue: ${esc($("#reportingUnit").value)} ${format(revenue)} · Expenses: ${esc($("#reportingUnit").value)} ${format(expenses)} · Draft profit before tax and other adjustments: ${esc($("#reportingUnit").value)} ${format(profit())}.<br>${balancedTB ? "Trial balance debit and credit totals net to zero." : `Trial balance net difference: ${esc($("#reportingUnit").value)} ${format(trialBalanceNet())}.`} ${Math.abs(balanceDifference) < .01 ? "Balance sheet totals agree." : `Balance sheet cross-check requires review: assets less equity and liabilities = ${esc($("#reportingUnit").value)} ${format(balanceDifference)}.`}<br>These statements are generated from mapped balances and are for internal review only. Refer to the notes and compliance checklist before circulation.</div>
+      </div>`;
+    }
+    function noteFor(statement, major, minor) {
+      const account = accounts.find(a => a.statement === statement && a.major === major && a.minor === minor && a.note);
+      return account ? account.note : "—";
+    }
+    function renderBalance() {
+      const comparison = $("#comparative").checked;
+      const rows = [];
+      const groups = [
+        ["I. Equity and liabilities","Equity and Liabilities",["Share Capital","Other Equity","Long-Term Borrowings","Deferred Tax Liabilities (Net)","Long-Term Provisions","Short-Term Borrowings","Trade Payables","Other Current Liabilities","Short-Term Provisions"]],
+        ["II. Assets","Assets",["Property, Plant & Equipment","Capital Work-in-Progress","Long-Term Loans and Advances","Inventories","Trade Receivables","Cash and Cash Equivalents","Short-Term Loans and Advances"]]
+      ];
+      groups.forEach(([label, major, order]) => {
+        const majorTotal = major === "Equity and Liabilities" ? balanceSheetTotals().liabilities : balanceSheetTotals().assets;
+        const priorMajorTotal = major === "Equity and Liabilities" ? balanceSheetTotals(true).liabilities : balanceSheetTotals(true).assets;
+        rows.push(`<tr class="group-row"><td>${label}</td><td></td>${amountCell(majorTotal)}${comparison ? amountCell(priorMajorTotal) : ""}</tr>`);
+        order.forEach(minor => {
+          const value = totalsByMinor("Balance Sheet", major).get(minor);
+          if (value === undefined) return;
+          const prior = totalsByMinor("Balance Sheet", major, true).get(minor) || 0;
+          rows.push(`<tr><td class="indent">${esc(minor)}</td><td class="num">${esc(noteFor("Balance Sheet", major, minor))}</td>${amountCell(value)}${comparison ? amountCell(prior) : ""}</tr>`);
+        });
+      });
+      const bs = balanceSheetTotals();
+      const difference = bs.assets - bs.liabilities;
+      return `<div class="sheet">${statementHeader(`BALANCE SHEET ${$("#consolidated").checked ? "(CONSOLIDATED DRAFT)" : ""}`, `AS AT ${yearEndLabel().toUpperCase()}`)}
+        <div class="table-wrap"><table class="statement-table"><thead><tr><th>Particulars</th><th>Note No.</th><th class="num">${esc(currentPeriod())}</th>${comparison ? `<th class="num">${esc(previousPeriod())}</th>` : ""}</tr></thead><tbody>${rows.join("")}<tr class="total-row"><td>Total equity and liabilities</td><td></td>${amountCell(bs.liabilities)}${comparison ? amountCell(balanceSheetTotals(true).liabilities) : ""}</tr><tr class="total-row"><td>Total assets</td><td></td>${amountCell(bs.assets)}${comparison ? amountCell(balanceSheetTotals(true).assets) : ""}</tr></tbody></table></div>
+        <div class="notice ${Math.abs(difference) < .01 ? "" : "warning"}" style="margin-top:12px;margin-bottom:0"><span class="notice-icon">${Math.abs(difference) < .01 ? "✓" : "!"}</span><span>${Math.abs(difference) < .01 ? "Assets agree to equity and liabilities." : `Cross-check: assets less equity and liabilities = ${esc($("#reportingUnit").value)} ${format(difference)}. Review mappings and closing balances before circulation.`}</span></div>
+      </div>`;
+    }
+    function renderProfit() {
+      const comparison = $("#comparative").checked;
+      const revenue = totalsByMinor("Profit & Loss","Revenue");
+      const expenses = new Map(Array.from(totalsByMinor("Profit & Loss","Expenses")).filter(([label]) => label !== "Tax Expense"));
+      const tax = total(a => a.statement === "Profit & Loss" && a.minor === "Tax Expense");
+      const priorTax = total(a => a.statement === "Profit & Loss" && a.minor === "Tax Expense", true);
+      const revenueRows = Array.from(revenue, ([label, amount]) => `<tr><td class="indent">${esc(label)}</td><td class="num">${esc(noteFor("Profit & Loss","Revenue",label))}</td>${amountCell(amount)}${comparison ? amountCell(totalsByMinor("Profit & Loss","Revenue",true).get(label) || 0) : ""}</tr>`).join("");
+      const expenseRows = Array.from(expenses, ([label, amount]) => `<tr><td class="indent">${esc(label)}</td><td class="num">${esc(noteFor("Profit & Loss","Expenses",label))}</td>${amountCell(amount)}${comparison ? amountCell(totalsByMinor("Profit & Loss","Expenses",true).get(label) || 0) : ""}</tr>`).join("");
+      const revenueTotal = total(a => a.statement === "Profit & Loss" && a.major === "Revenue");
+      const expenseTotal = total(a => a.statement === "Profit & Loss" && a.major === "Expenses" && a.minor !== "Tax Expense");
+      const priorExpenseTotal = total(a => a.statement === "Profit & Loss" && a.major === "Expenses" && a.minor !== "Tax Expense", true);
+      const profitBeforeTax = revenueTotal - expenseTotal;
+      return `<div class="sheet">${statementHeader("STATEMENT OF PROFIT AND LOSS", `FOR THE YEAR ENDED ${yearEndLabel().toUpperCase()}`)}
+        <div class="table-wrap"><table class="statement-table"><thead><tr><th>Particulars</th><th>Note No.</th><th class="num">Current year</th>${comparison ? `<th class="num">Previous year</th>` : ""}</tr></thead><tbody>
+        <tr class="group-row"><td>I. Revenue</td><td></td>${amountCell(revenueTotal)}${comparison ? amountCell(total(a => a.statement === "Profit & Loss" && a.major === "Revenue", true)) : ""}</tr>${revenueRows}
+        <tr class="group-row"><td>II. Expenses</td><td></td>${amountCell(expenseTotal)}${comparison ? amountCell(priorExpenseTotal) : ""}</tr>${expenseRows}
+        <tr class="total-row"><td>III. Profit / (loss) before tax</td><td></td>${amountCell(profitBeforeTax)}${comparison ? amountCell(profit(true) + priorTax) : ""}</tr>
+        <tr><td class="indent">IV. Tax expense</td><td>${esc(noteFor("Profit & Loss","Expenses","Tax Expense"))}</td>${amountCell(tax)}${comparison ? amountCell(priorTax) : ""}</tr>
+        <tr class="total-row"><td>V. Profit / (loss) for the year</td><td></td>${amountCell(profit())}${comparison ? amountCell(profit(true)) : ""}</tr></tbody></table></div>
+        <p class="fine-print">Classification, tax presentation and appropriations require review by the company’s finance team and statutory auditor.</p>
+      </div>`;
+    }
+    function renderCashFlow() {
+      if (!$("#cashFlowApplicable").checked) return `<div class="sheet"><div class="empty">Cash flow statement marked as not applicable. Confirm the applicable exemption and retain supporting documentation.</div></div>`;
+      const currentCash = total(a => a.statement === "Balance Sheet" && a.minor === "Cash and Cash Equivalents");
+      const priorCash = total(a => a.statement === "Balance Sheet" && a.minor === "Cash and Cash Equivalents", true);
+      const depreciation = total(a => a.statement === "Profit & Loss" && a.minor === "Depreciation & Amortisation");
+      const delta = currentCash - priorCash;
+      const comparison = $("#comparative").checked;
+      return `<div class="sheet">${statementHeader("CASH FLOW STATEMENT", `FOR THE YEAR ENDED ${yearEndLabel().toUpperCase()}`)}
+        <div class="notice info"><span class="notice-icon">ⓘ</span><span>Indicative draft only. Activity-level cash flow adjustments are not present in the supplied trial balance; prepare and reconcile a detailed cash flow before approval.</span></div>
+        <div class="table-wrap"><table class="statement-table"><thead><tr><th>Particulars</th><th class="num">Current year</th>${comparison ? `<th class="num">Previous year</th>` : ""}</tr></thead><tbody>
+        <tr class="group-row"><td>Cash and cash equivalents at beginning of year</td>${amountCell(priorCash)}${comparison ? `<td class="num">—</td>` : ""}</tr>
+        <tr class="group-row"><td>Cash and cash equivalents at end of year (per mapped balance)</td>${amountCell(currentCash)}${comparison ? amountCell(priorCash) : ""}</tr>
+        <tr><td class="indent">Net change in cash and cash equivalents (reconciliation target)</td>${amountCell(delta)}${comparison ? `<td class="num">—</td>` : ""}</tr>
+        <tr><td class="indent">Profit / (loss) for the year</td>${amountCell(profit())}${comparison ? amountCell(profit(true)) : ""}</tr>
+        <tr><td class="indent">Depreciation and amortisation expense (add-back candidate)</td>${amountCell(depreciation)}${comparison ? amountCell(total(a => a.statement === "Profit & Loss" && a.minor === "Depreciation & Amortisation", true)) : ""}</tr>
+        </tbody></table></div><p class="fine-print">This presentation does not assert compliance with the indirect or direct method until non-cash items, working-capital movements, investing and financing cash flows have been reviewed.</p>
+      </div>`;
+    }
+    function renderNotes() {
+      const notes = new Map();
+      accounts.filter(a => a.statement === "Balance Sheet" || a.statement === "Profit & Loss").forEach(account => {
+        const key = account.note || "—";
+        if (!notes.has(key)) notes.set(key, []);
+        notes.get(key).push(account);
+      });
+      if (notes.has("2")) notes.get("2").push({
+        description:"Current year profit / (loss) transferred to reserves",
+        statement:"Balance Sheet",major:"Equity and Liabilities",minor:"Other Equity",
+        current:-profit(),previous:-profit(true)
+      });
+      const comparison = $("#comparative").checked;
+      const content = Array.from(notes, ([note, entries]) => {
+        const caption = entries[0] ? entries[0].minor : "Unmapped balances";
+        const rows = entries.map(a => `<tr><td>${esc(a.description)}</td>${amountCell(statementAmount(a))}${comparison ? amountCell(previousAmount(a)) : ""}</tr>`).join("");
+        const subTotal = entries.reduce((sum,a) => sum + statementAmount(a), 0);
+        const priorTotal = entries.reduce((sum,a) => sum + previousAmount(a), 0);
+        return `<tr class="group-row"><td colspan="${comparison ? 3 : 2}">Note ${esc(note)} — ${esc(caption)}</td></tr>${rows}<tr class="total-row"><td>Note ${esc(note)} total</td>${amountCell(subTotal)}${comparison ? amountCell(priorTotal) : ""}</tr>`;
+      }).join("");
+      return `<div class="sheet">${statementHeader("NOTES FORMING PART OF THE FINANCIAL STATEMENTS", `FOR THE YEAR ENDED ${yearEndLabel().toUpperCase()}`)}
+        <div class="table-wrap"><table class="statement-table"><thead><tr><th>Particulars</th><th class="num">Current year · ${esc($("#reportingUnit").value)}</th>${comparison ? `<th class="num">Previous year · ${esc($("#reportingUnit").value)}</th>` : ""}</tr></thead><tbody>${content || `<tr><td colspan="3" class="empty">No mapped statement balances are available.</td></tr>`}</tbody></table></div>
+        <div class="notes-copy"><strong>Basis of preparation</strong><br>These draft notes are assembled from the mapped trial balance. Add the statutory disclosures, accounting policies, ageing schedules, related-party details, commitments, contingencies and other information required for the applicable reporting framework.</div>
+      </div>`;
+    }
+    function boardDraft() {
+      const meetingDate = $("#meetingDate").value ? new Date($("#meetingDate").value + "T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"long",year:"numeric"}) : "[insert meeting date]";
+      const time = $("#meetingTime").value || "[insert time]";
+      const venue = $("#meetingVenue").value || "[insert venue / video conference details]";
+      const chair = $("#chairperson").value || "[insert authorised signatory]";
+      const auditor = $("#auditor").value || "[insert statutory auditor]";
+      const name = $("#companyName").value || "[Company name]";
+      const period = $("#financialYear").value || "[financial year]";
+      return `DRAFT — FOR BOARD AND PROFESSIONAL REVIEW\n\n${name.toUpperCase()}\nCIN: ${$("#cin").value || "[insert CIN]"}\n\nEXTRACT OF THE MINUTES OF THE MEETING OF THE BOARD OF DIRECTORS\n\nDate: ${meetingDate}    Time: ${time}\nVenue: ${venue}\n\nAPPROVAL OF FINANCIAL STATEMENTS FOR THE FINANCIAL YEAR ENDED ${yearEndLabel().toUpperCase()}\n\nThe Chairperson placed before the Board the draft financial statements of the Company for the financial year ${period}, together with the notes and the report of the statutory auditor. The Board reviewed the documents and considered the matters presented.\n\n“RESOLVED THAT, subject to completion of the audit, resolution of the open review points and such modifications as may be required, the draft financial statements of the Company for the financial year ended ${yearEndLabel()}, including the Balance Sheet, Statement of Profit and Loss, Cash Flow Statement (where applicable) and Notes to Accounts, be and are hereby approved for the purpose of finalisation and execution in accordance with applicable law.”\n\n“RESOLVED FURTHER THAT ${chair} be and is hereby authorised to finalise and sign the financial statements and related documents, after the statutory auditor’s report and other required approvals are in place, and to take the actions necessary to place the documents before the members.”\n\nThe Board approval date, final financial statement figures, auditor’s report date, signatories and statutory references must be confirmed before this draft is adopted. This template is not a substitute for legal or professional review.\n\nStatutory auditor: ${auditor}\nFor and on behalf of the Board\n\n______________________________\n${chair}\nAuthorised signatory`;
+    }
+    function renderBoard() {
+      const checked = $$(".review-check:checked").length;
+      return `<div class="sheet">${statementHeader("DRAFT BOARD APPROVAL", `FINANCIAL YEAR ${$("#financialYear").value || "—"}`)}
+        <div class="summary-grid"><div class="summary-stat"><div class="value">${checked}/4</div><div class="label">Review checklist items complete</div></div><div class="summary-stat"><div class="value">${$("#meetingDate").value ? "Set" : "Open"}</div><div class="label">Board meeting date</div></div><div class="summary-stat"><div class="value">${Math.abs(trialBalanceNet()) < .01 ? "Agrees" : "Review"}</div><div class="label">Trial balance check</div></div></div>
+        <div class="draft-text">${esc(boardDraft())}</div>
+      </div>`;
+    }
+    function renderMapping() {
+      const search = ($("#mappingSearch")?.value || "").trim().toLowerCase();
+      const filtered = accounts.map((account,index) => ({account,index})).filter(({account}) => `${account.code} ${account.description} ${account.minor}`.toLowerCase().includes(search));
+      const rows = filtered.map(({account,index}) => {
+        const statementOptions = ["Balance Sheet","Profit & Loss","Unmapped"];
+        const statement = account.statement || "Unmapped";
+        const majorOptions = mappings[statement] ? Object.keys(mappings[statement]) : ["Unmapped"];
+        const minorOptions = mappings[statement] && mappings[statement][account.major] ? mappings[statement][account.major] : ["Unmapped"];
+        const makeOptions = (items, selected) => items.map(item => `<option value="${esc(item)}" ${item === selected ? "selected" : ""}>${esc(item)}</option>`).join("");
+        return `<tr><td>${esc(account.code)}</td><td class="account-cell">${esc(account.description)}</td><td class="amount">${format(account.current)}</td><td><select data-index="${index}" data-key="statement">${makeOptions(statementOptions,statement)}</select></td><td><select data-index="${index}" data-key="major">${makeOptions(majorOptions,account.major || "Unmapped")}</select></td><td><select data-index="${index}" data-key="minor">${makeOptions(minorOptions,account.minor || "Unmapped")}</select></td><td><input aria-label="Note number for ${esc(account.description)}" data-index="${index}" data-key="note" value="${esc(account.note)}"></td></tr>`;
+      }).join("");
+      return `<div class="sheet"><div class="mapping-toolbar"><div><strong>Review GL account classifications</strong><p class="fine-print">Update statement, major head, line item and note number. Unmapped accounts are excluded from statement totals.</p></div><input class="search-input mapping-filter" id="mappingSearch" placeholder="Search accounts…" value="${esc(search)}" aria-label="Search accounts"></div><div class="table-wrap"><table class="mapping-table"><thead><tr><th>GL code</th><th>Account</th><th>TB balance</th><th>Statement</th><th>Major head</th><th>Line item</th><th>Note</th></tr></thead><tbody>${rows || `<tr><td colspan="7" class="empty">No matching accounts.</td></tr>`}</tbody></table></div><p class="fine-print">${accounts.length} accounts · ${unmappedCount()} require mapping · Trial balance values are shown using the imported sign convention.</p></div>`;
+    }
+    function complianceItem(title, description, status, tone) {
+      return `<div class="compliance-item"><div class="compliance-title">${esc(title)}</div><p>${esc(description)}</p><div class="compliance-status"><span class="status-dot ${tone}"></span>${esc(status)}</div></div>`;
+    }
+    function renderCompliance() {
+      const metadataMissing = !$("#companyName").value.trim() || !$("#cin").value.trim() || !$("#yearEnd").value;
+      const tbBalanced = Math.abs(trialBalanceNet()) < .01;
+      const unmapped = unmappedCount();
+      const balance = balanceSheetTotals();
+      const difference = balance.assets - balance.liabilities;
+      const reviews = $$(".review-check:checked").length;
+      const notesCount = new Set(accounts.filter(a => a.note && a.statement).map(a => a.note)).size;
+      const items = [
+        complianceItem("Section 129 — True and fair view","Financial statements should present a true and fair view and comply with applicable standards.",metadataMissing ? "Company details incomplete" : "Professional review required",metadataMissing ? "warn" : "review"),
+        complianceItem("Section 133 — Accounting standards",$("#framework").value + " selected; applicability to be confirmed.",$("#framework").value.split("—")[0].trim() + " selected","ok"),
+        complianceItem("Section 134 — Board approval","Board approval and signatures are required before issue.",$("#meetingDate").value && $("#chairperson").value ? "Details entered — approval pending" : "Approval details pending",$("#meetingDate").value && $("#chairperson").value ? "review" : "warn"),
+        complianceItem("Section 137 — ROC filing","Filing timeline and applicable exemptions should be confirmed after AGM.", "Not filed — confirm after approval","bad"),
+        complianceItem("Schedule III — Disclosure review",`${notesCount} distinct note references found in mapped accounts. Complete statutory disclosure checks.`,`${reviews} of 4 internal checks complete`,reviews === 4 ? "ok" : "warn"),
+        complianceItem("Trial balance & mapping",tbBalanced ? "Imported debit / credit balances net to zero." : `Imported balances differ by ${$("#reportingUnit").value} ${format(trialBalanceNet())}.`,unmapped ? `${unmapped} account(s) need mapping` : tbBalanced ? "Balanced · mapped" : "Difference to investigate",unmapped || !tbBalanced ? "bad" : "ok"),
+        complianceItem("Balance sheet cross-check","Compare assets to equity and liabilities after reviewing closing entries.",Math.abs(difference) < .01 ? "Totals agree" : `Difference ${$("#reportingUnit").value} ${format(difference)}`,Math.abs(difference) < .01 ? "ok" : "warn")
+      ];
+      $("#complianceChecks").innerHTML = items.join("");
+    }
+    function renderNotice() {
+      const tbDiff = trialBalanceNet();
+      const bs = balanceSheetTotals();
+      const bsDiff = bs.assets - bs.liabilities;
+      const note = $("#overviewNotice");
+      let text = `${accounts.length} accounts · ${new Set(accounts.filter(a=>a.statement).map(a=>a.statement)).size} statement sections · ${4 - $$(".review-check:checked").length} review checks outstanding`;
+      note.className = "notice";
+      if (unmappedCount()) {
+        text += ` · ${unmappedCount()} mappings need attention`;
+        note.classList.add("warning");
+      } else if (Math.abs(tbDiff) >= .01 || Math.abs(bsDiff) >= .01) {
+        text += " · Reconciliation review required";
+        note.classList.add("warning");
+      } else {
+        text += " · Trial balance agrees";
+      }
+      $("#overviewNoticeText").textContent = text;
+    }
+    function render() {
+      $("#topCompany").textContent = $("#companyName").value || "Company name";
+      $("#topFY").textContent = "FY " + ($("#financialYear").value || "—").replace("-", "–");
+      $("#mappingTab").classList.toggle("hidden", !accounts.length);
+      renderNotice();
+      renderCompliance();
+      const content = $("#viewContent");
+      if (!accounts.length) {
+        content.innerHTML = `<div class="sheet"><div class="empty"><h2>No trial balance loaded</h2><p>Load a structured Excel or CSV trial balance to prepare statement drafts.</p><button class="button button-dark" id="emptyLoadBtn">Load trial balance</button></div></div>`;
+        $("#emptyLoadBtn").addEventListener("click", () => $("#trialBalanceInput").click());
+        return;
+      }
+      const views = {overview:renderOverview,balance:renderBalance,profit:renderProfit,cashflow:renderCashFlow,notes:renderNotes,board:renderBoard,mapping:renderMapping};
+      content.innerHTML = (views[activeView] || views.overview)();
+      $$(".tab").forEach(tab => tab.classList.toggle("active", tab.dataset.view === activeView));
+      $$(".step").forEach(step => {
+        const n = Number(step.dataset.step);
+        step.classList.toggle("active", activeView === "mapping" ? n === 2 : ["overview","balance","profit","cashflow","notes","board"].includes(activeView) ? n === 3 : n === 1);
+        step.classList.toggle("done", activeView === "mapping" && n === 1);
+      });
+      if (activeView === "mapping") bindMapping();
+    }
+    function bindMapping() {
+      const search = $("#mappingSearch");
+      if (search) search.addEventListener("input", () => {
+        const start = search.selectionStart;
+        render();
+        const next = $("#mappingSearch");
+        next.focus();
+        next.setSelectionRange(start,start);
+      });
+      $$(".mapping-table [data-key]").forEach(input => input.addEventListener("change", () => {
+        const account = accounts[Number(input.dataset.index)];
+        if (!account) return;
+        const key = input.dataset.key;
+        account[key] = input.value;
+        if (key === "statement") {
+          account.major = mappings[account.statement] ? Object.keys(mappings[account.statement])[0] : "Unmapped";
+          account.minor = mappings[account.statement] && mappings[account.statement][account.major] ? mappings[account.statement][account.major][0] : "Unmapped";
+        } else if (key === "major") {
+          account.minor = mappings[account.statement] && mappings[account.statement][input.value] ? mappings[account.statement][input.value][0] : "Unmapped";
+        }
+        render();
+      }));
+    }
+    function notify(message, isError = false) {
+      const toast = $("#toast");
+      toast.textContent = message;
+      toast.classList.remove("hidden");
+      toast.style.background = isError ? "#9f202a" : "";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.add("hidden"), 4200);
+    }
+    function collectState() {
+      const fields = ["companyName","cin","address","financialYear","reportingUnit","framework","yearEnd","meetingDate","meetingTime","meetingVenue","chairperson","auditor"];
+      const form = {};
+      fields.forEach(id => form[id] = $( "#" + id).value);
+      form.comparative = $("#comparative").checked;
+      form.cashFlowApplicable = $("#cashFlowApplicable").checked;
+      form.consolidated = $("#consolidated").checked;
+      form.reviewChecks = $$(".review-check").map(el => el.checked);
+      return {version:1, form, accounts, savedAt:new Date().toISOString()};
+    }
+    function applyState(state) {
+      if (!state || !Array.isArray(state.accounts) || !state.form) throw new Error("This file is not a valid Financial Statement Workbench working file.");
+      const fields = ["companyName","cin","address","financialYear","reportingUnit","framework","yearEnd","meetingDate","meetingTime","meetingVenue","chairperson","auditor"];
+      fields.forEach(id => { if (state.form[id] !== undefined && $("#" + id)) $("#" + id).value = state.form[id]; });
+      ["comparative","cashFlowApplicable","consolidated"].forEach(id => { if (state.form[id] !== undefined) $("#" + id).checked = !!state.form[id]; });
+      accounts = state.accounts.map(a => ({
+        code:String(a.code || ""), description:String(a.description || ""), type:String(a.type || ""),
+        current:num(a.current), previous:num(a.previous), statement:String(a.statement || "Unmapped"),
+        major:String(a.major || "Unmapped"), minor:String(a.minor || "Unmapped"), note:String(a.note || ""), review:!!a.review
+      }));
+      if (Array.isArray(state.form.reviewChecks)) $$(".review-check").forEach((el,index) => el.checked = !!state.form.reviewChecks[index]);
+      render();
+    }
+    function download(filename, content, type) {
+      const blob = new Blob([content], {type});
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    function filenameBase() {
+      return ($("#companyName").value || "financial-statements").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "financial-statements";
+    }
+    function htmlDocument(title, body) {
+      return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font:12pt Calibri,Arial,sans-serif;color:#182b27;margin:40px}h1,h2{text-align:center}h1{font-size:18pt}h2{font-size:14pt}table{width:100%;border-collapse:collapse;margin:18px 0}td,th{padding:7px;border:1px solid #cdd7d4;text-align:left}th{background:#edf2f0}.num{text-align:right}.group-row{font-weight:bold;background:#f2f5f4}.total-row{font-weight:bold;border-top:2px solid #789089}.notes-copy{line-height:1.6}.draft-text{white-space:pre-wrap;line-height:1.6}.badge{font-size:9pt}p{line-height:1.5}</style></head><body>${body}</body></html>`;
+    }
+    function outputBody() {
+      const saved = activeView;
+      const body = [renderBalance(),renderProfit(),$("#cashFlowApplicable").checked ? renderCashFlow() : "",renderNotes(),renderBoard()].join("<div style='page-break-before:always'></div>");
+      activeView = saved;
+      return body;
+    }
+    function csvEscape(value) { return `"${String(value == null ? "" : value).replace(/"/g,'""')}"`; }
+    function exportCSV() {
+      const rows = [["Statement","Major head","Particulars","Note no.","Current year","Previous year"]];
+      ["Balance Sheet","Profit & Loss"].forEach(statement => {
+        const groups = new Map();
+        accounts.filter(a=>a.statement===statement).forEach(a => {
+          const key = `${a.major}|${a.minor}`;
+          if (!groups.has(key)) groups.set(key,{major:a.major,minor:a.minor,note:a.note,current:0,previous:0});
+          const item = groups.get(key);
+          item.current += statementAmount(a);
+          item.previous += previousAmount(a);
+        });
+        groups.forEach(item => rows.push([statement,item.major,item.minor,item.note,cleanNumber(item.current),cleanNumber(item.previous)]));
+      });
+      download(`${filenameBase()}-statements.csv`,"\uFEFF"+rows.map(row=>row.map(csvEscape).join(",")).join("\r\n"),"text/csv;charset=utf-8");
+    }
+    function prepareEmail() {
+      const bs = balanceSheetTotals();
+      const body = `Dear Colleagues,\n\nPlease find attached the working draft financial statements of ${$("#companyName").value || "[Company name]"} for FY ${$("#financialYear").value || "[year]"} for review.\n\nDraft highlights (in ${$("#reportingUnit").value}):\n• Revenue: ${format(total(a=>a.statement==="Profit & Loss"&&a.major==="Revenue"))}\n• Profit / (loss) for the year: ${format(profit())}\n• Total assets: ${format(bs.assets)}\n• Total equity and liabilities: ${format(bs.liabilities)}\n\nOpen review points:\n• Trial balance net difference: ${format(trialBalanceNet())}\n• Balance sheet difference (assets less equity and liabilities): ${format(bs.assets-bs.liabilities)}\n• Unmapped accounts: ${unmappedCount()}\n• ${4 - $$(".review-check:checked").length} internal checklist item(s) remain open.\n\nPlease review the classifications, supporting schedules, accounting policies, statutory disclosures and approval details. These drafts are for internal discussion only and are subject to audit and professional review; they are not approved or filed financial statements.\n\nRegards,\n${$("#chairperson").value || "[Name]"}\n${$("#companyName").value || "[Company name]"}`;
+      $("#emailText").value = body;
+      $("#emailDialog").showModal();
+    }
+    async function loadSpreadsheet(file) {
+      const extension = file.name.toLowerCase().split(".").pop();
+      let parsed;
+      if (extension === "csv" || extension === "tsv" || extension === "txt") {
+        parsed = rowsToAccounts(parseDelimited(await file.text(), extension === "tsv" ? "\t" : undefined));
+      } else if (extension === "xlsx" || extension === "xlsm") {
+        parsed = await parseXlsx(file);
+      } else {
+        throw new Error("Unsupported file type. Choose an .xlsx, .xlsm, .csv or .tsv file.");
+      }
+      if (!parsed.accounts.length) throw new Error("No trial balance rows were found. Include a header row with GL Code, Account Description and current balance columns.");
+      accounts = parsed.accounts;
+      if (parsed.company) $("#companyName").value = parsed.company;
+      if (parsed.cin) $("#cin").value = parsed.cin;
+      if (parsed.fy) $("#financialYear").value = parsed.fy;
+      if (parsed.unit) $("#reportingUnit").value = parsed.unit;
+      activeView = "mapping";
+      render();
+      notify(`${parsed.accounts.length} account(s) imported. Review mapping classifications and reconciliation checks.`);
+    }
+    function parseDelimited(text, delimiter) {
+      const sample = text.slice(0, text.indexOf("\n") < 0 ? text.length : text.indexOf("\n"));
+      const sep = delimiter || (sample.split("\t").length > sample.split(",").length ? "\t" : ",");
+      const rows = [];
+      let row = [], cell = "", quote = false;
+      for (let i=0;i<text.length;i++) {
+        const char=text[i];
+        if (char === '"') {
+          if (quote && text[i+1] === '"') { cell += '"'; i++; }
+          else quote = !quote;
+        } else if (!quote && char === sep) { row.push(cell); cell=""; }
+        else if (!quote && (char === "\n" || char === "\r")) {
+          if (char === "\r" && text[i+1] === "\n") i++;
+          row.push(cell); cell="";
+          if (row.some(value=>String(value).trim())) rows.push(row);
+          row=[];
+        } else cell += char;
+      }
+      row.push(cell);
+      if (row.some(value=>String(value).trim())) rows.push(row);
+      return rows;
+    }
+    function normalizeHeader(value) { return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g," ").trim(); }
+    function rowsToAccounts(rows) {
+      const headerIndex = rows.findIndex(row => row.some(cell => /gl\s*code|account\s*code|ledger\s*code/i.test(String(cell))) && row.some(cell => /description|account\s*name|ledger\s*name/i.test(String(cell))));
+      if (headerIndex < 0) throw new Error("Could not locate a header row containing a GL code and account description.");
+      const headers = rows[headerIndex].map(normalizeHeader);
+      const column = patterns => headers.findIndex(h => patterns.some(pattern => pattern.test(h)));
+      const codeCol = column([/^(gl )?code$/, /account code/, /ledger code/]);
+      const nameCol = column([/description/, /account name/, /ledger name/]);
+      const currentCol = column([/cy net amount/, /current net/, /current year net/, /^current balance$/, /^balance$/, /^closing balance$/, /current year balance/]);
+      const previousCol = column([/py net amount/, /previous net/, /prior year net/, /previous year balance/, /prior year balance/]);
+      const debitCol = column([/cy debit/, /current debit/]);
+      const creditCol = column([/cy credit/, /current credit/]);
+      const prevDebitCol = column([/py debit/, /previous debit/]);
+      const prevCreditCol = column([/py credit/, /previous credit/]);
+      if (codeCol < 0 || nameCol < 0 || (currentCol < 0 && (debitCol < 0 || creditCol < 0))) throw new Error("Required columns are missing. Provide GL Code, Account Description and CY Net Amount (or CY Debit and CY Credit).");
+      const statementCol = column([/schedule iii statement/, /^statement$/]);
+      const majorCol = column([/major head/, /^major$/]);
+      const minorCol = column([/minor head/, /line item/, /^category$/, /^particulars$/]);
+      const noteCol = column([/note no/, /^note$/]);
+      const typeCol = column([/^account type$/, /^type$/]);
+      const records = [];
+      for (const row of rows.slice(headerIndex+1)) {
+        const code = String(row[codeCol] || "").trim();
+        const description = String(row[nameCol] || "").trim();
+        if (!code || !description || /total trial balance/i.test(description)) continue;
+        const current = currentCol >= 0 ? num(row[currentCol]) : num(row[debitCol]) - num(row[creditCol]);
+        const previous = previousCol >= 0 ? num(row[previousCol]) : (prevDebitCol >= 0 || prevCreditCol >= 0) ? num(row[prevDebitCol]) - num(row[prevCreditCol]) : 0;
+        const rawStatement = statementCol >= 0 ? String(row[statementCol] || "").trim() : "";
+        const statement = rawStatement.toLowerCase().includes("balance") ? "Balance Sheet" : rawStatement.toLowerCase().includes("profit") || rawStatement.toLowerCase().includes("loss") ? "Profit & Loss" : "Unmapped";
+        const major = String(majorCol >= 0 ? row[majorCol] || "" : "").trim() || (statement === "Profit & Loss" ? (current < 0 ? "Revenue" : "Expenses") : "Unmapped");
+        const minor = String(minorCol >= 0 ? row[minorCol] || "" : "").trim() || "Unmapped";
+        records.push({code,description,type:String(typeCol>=0?row[typeCol]||"":"").trim(),current,previous,statement,major,minor,note:String(noteCol>=0?row[noteCol]||"":"").trim(),review:false});
+      }
+      const text = rows.slice(0,headerIndex).flat().join(" ");
+      const companyMatch = text.match(/(?:company(?:\s+name)?\s*[:\-]\s*)([^|]+)/i) || text.match(/([A-Z][A-Z0-9 &().,-]+(?:PRIVATE|PVT|LIMITED|LTD)\.?(?:\s|$))/i);
+      const cinMatch = text.match(/\b[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}\b/i);
+      const fyMatch = text.match(/\bFY\s*(20\d{2})\s*[-–/]\s*(\d{2,4})\b/i) || text.match(/\b(20\d{2})\s*[-–/]\s*(\d{2,4})\b/);
+      const unitMatch = text.match(/(?:Reporting Unit|Figures in|reporting unit)\s*[:\-]\s*([₹a-z ]+(?:lakhs?|crores?|thousands?)?)/i);
+      return {accounts:records,company:companyMatch?companyMatch[1].trim():null,cin:cinMatch?cinMatch[0].toUpperCase():null,fy:fyMatch?(fyMatch[1]+"-"+String(fyMatch[2]).slice(-2)):null,unit:unitMatch?(unitMatch[1].includes("₹")?unitMatch[1].trim():"₹ "+unitMatch[1].trim()):null};
+    }
+    async function parseXlsx(file) {
+      if (!("DecompressionStream" in window)) throw new Error("This browser cannot read compressed Excel workbooks locally. Export the trial balance sheet as CSV and import that instead.");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const view = new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+      let eocd = -1;
+      for (let i=bytes.length-22;i>=Math.max(0,bytes.length-65558);i--) if (view.getUint32(i,true)===0x06054b50) {eocd=i;break;}
+      if (eocd<0) throw new Error("This file is not a readable .xlsx workbook.");
+      const count = view.getUint16(eocd+10,true), directoryOffset = view.getUint32(eocd+16,true);
+      const files = new Map();
+      const decoder = new TextDecoder();
+      let cursor = directoryOffset;
+      for (let i=0;i<count;i++) {
+        if (view.getUint32(cursor,true)!==0x02014b50) throw new Error("The Excel workbook directory is invalid.");
+        const method=view.getUint16(cursor+10,true), compressed=view.getUint32(cursor+20,true), nameLength=view.getUint16(cursor+28,true), extraLength=view.getUint16(cursor+30,true), commentLength=view.getUint16(cursor+32,true), localOffset=view.getUint32(cursor+42,true);
+        const name=decoder.decode(bytes.subarray(cursor+46,cursor+46+nameLength));
+        files.set(name,{method,compressed,localOffset});
+        cursor += 46+nameLength+extraLength+commentLength;
+      }
+      async function readFile(path) {
+        const item=files.get(path);
+        if (!item) return null;
+        const local=item.localOffset;
+        if (view.getUint32(local,true)!==0x04034b50) throw new Error(`Invalid Excel entry: ${path}`);
+        const nameLength=view.getUint16(local+26,true), extraLength=view.getUint16(local+28,true);
+        const start=local+30+nameLength+extraLength;
+        const raw=bytes.slice(start,start+item.compressed);
+        if (item.method===0) return decoder.decode(raw);
+        if (item.method!==8) throw new Error("This workbook uses an unsupported compression method.");
+        try {
+          const stream=new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+          return await new Response(stream).text();
+        } catch (error) {
+          throw new Error("Could not decompress this Excel sheet in the browser. Try saving it as .xlsx or importing it as CSV.");
+        }
+      }
+      const parseXML = text => new DOMParser().parseFromString(text,"application/xml");
+      const workbookText=await readFile("xl/workbook.xml");
+      const relsText=await readFile("xl/_rels/workbook.xml.rels");
+      if (!workbookText || !relsText) throw new Error("Excel workbook metadata is missing.");
+      const wb=parseXML(workbookText), rels=parseXML(relsText);
+      const sheetNodes=Array.from(wb.getElementsByTagNameNS("*","sheet"));
+      const relationMap=new Map(Array.from(rels.getElementsByTagNameNS("*","Relationship")).map(node=>[node.getAttribute("Id"),node.getAttribute("Target")]));
+      const sheetNode=sheetNodes.find(node=>/trial\s*balance/i.test(node.getAttribute("name"))) || sheetNodes[0];
+      if (!sheetNode) throw new Error("No worksheets were found in this workbook.");
+      let target=relationMap.get(sheetNode.getAttribute("r:id"));
+      if (!target) throw new Error("The trial balance worksheet relationship is missing.");
+      target=target.replace(/^\/+/,"");
+      const sheetPath=target.startsWith("xl/")?target:"xl/"+target.replace(/^(\.\.\/)+/,"");
+      const [sheetText,sharedText]=await Promise.all([readFile(sheetPath),readFile("xl/sharedStrings.xml")]);
+      if (!sheetText) throw new Error("The selected worksheet could not be read.");
+      const shared=sharedText?Array.from(parseXML(sharedText).getElementsByTagNameNS("*","si")).map(si=>Array.from(si.getElementsByTagNameNS("*","t")).map(t=>t.textContent).join("")):[];
+      const sheet=parseXML(sheetText);
+      if (sheet.getElementsByTagName("parsererror").length) throw new Error("The selected worksheet contains invalid XML.");
+      const rows=[];
+      for (const rowNode of Array.from(sheet.getElementsByTagNameNS("*","row"))) {
+        const row=[];
+        for (const cell of Array.from(rowNode.children)) {
+          if (cell.localName!=="c") continue;
+          const ref=cell.getAttribute("r")||"";
+          const colLetters=(ref.match(/^[A-Z]+/i)||["A"])[0].toUpperCase();
+          let col=0;
+          for (const ch of colLetters) col=col*26+ch.charCodeAt(0)-64;
+          col--;
+          const type=cell.getAttribute("t");
+          let value="";
+          if (type==="inlineStr") value=Array.from(cell.getElementsByTagNameNS("*","t")).map(t=>t.textContent).join("");
+          else {
+            const v=Array.from(cell.children).find(child=>child.localName==="v");
+            value=v?v.textContent:"";
+            if (type==="s" && value!=="") value=shared[Number(value)] ?? "";
+            else if (type==="b") value=value==="1";
+          }
+          row[col]=value;
+        }
+        rows.push(row);
+      }
+      const preface=rows.slice(0,5).flat().filter(Boolean).join(" | ");
+      const result=rowsToAccounts(rows);
+      const cin=preface.match(/\b[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}\b/i);
+      const fy=preface.match(/\bFY\s*(20\d{2})\s*[-–/]\s*(\d{2,4})\b/i);
+      const unit=preface.match(/(?:Reporting Unit|Figures in)\s*[:\-]\s*([^|]+)/i);
+      const company=rows.slice(0,2).flat().find(value=>typeof value==="string" && /(?:PRIVATE|PVT|LIMITED|LTD)\.?/i.test(value));
+      if (!result.cin && cin) result.cin=cin[0].toUpperCase();
+      if (!result.fy && fy) result.fy=fy[1]+"-"+String(fy[2]).slice(-2);
+      if (!result.unit && unit) result.unit=unit[1].trim();
+      if (!result.company && company) result.company=company.trim();
+      return result;
+    }
+    function saveWorkingFile() {
+      download(`${filenameBase()}-working-file.json`,JSON.stringify(collectState(),null,2),"application/json;charset=utf-8");
+      notify("Working file downloaded. Keep it in a secure location; it contains company financial data.");
+    }
+    function bind() {
+      $$(".tab").forEach(tab => tab.addEventListener("click", () => { activeView=tab.dataset.view; render(); }));
+      ["companyName","cin","address","financialYear","reportingUnit","framework","yearEnd","meetingDate","meetingTime","meetingVenue","chairperson","auditor","comparative","cashFlowApplicable","consolidated"].forEach(id => {
+        $("#" + id).addEventListener("input",render);
+        $("#" + id).addEventListener("change",render);
+      });
+      $$(".review-check").forEach(check => check.addEventListener("change",render));
+      $("#loadTrialBalanceBtn").addEventListener("click",()=>$("#trialBalanceInput").click());
+      $("#trialBalanceInput").addEventListener("change",async event=>{
+        const file=event.target.files[0];
+        if (!file) return;
+        try { await loadSpreadsheet(file); }
+        catch(error) { notify(error.message || "Could not load this trial balance.",true); }
+        finally { event.target.value=""; }
+      });
+      $("#saveFileBtn").addEventListener("click",saveWorkingFile);
+      $("#openFileBtn").addEventListener("click",()=>$("#workingFileInput").click());
+      $("#workingFileInput").addEventListener("change",async event=>{
+        const file=event.target.files[0];
+        if (!file) return;
+        try { applyState(JSON.parse(await file.text())); notify("Working file opened."); }
+        catch(error) { notify(error.message || "Could not open this working file.",true); }
+        finally { event.target.value=""; }
+      });
+      $("#resetBtn").addEventListener("click",makeDemo);
+      $("#printBtn").addEventListener("click",()=>window.print());
+      $("#wordBtn").addEventListener("click",()=>{
+        const html=htmlDocument(`${$("#companyName").value} — financial statements`,outputBody());
+        download(`${filenameBase()}-draft-statements.doc`,html,"application/msword;charset=utf-8");
+      });
+      $("#exportBtn").addEventListener("click",exportCSV);
+      $("#emailBtn").addEventListener("click",prepareEmail);
+      $("#closeEmailBtn").addEventListener("click",()=>$("#emailDialog").close());
+      $("#copyEmailBtn").addEventListener("click",async()=>{
+        try { await navigator.clipboard.writeText($("#emailText").value); notify("Email draft copied to clipboard."); }
+        catch(error) { $("#emailText").select(); notify("Clipboard permission unavailable. Email text selected; copy it manually.",true); }
+      });
+      $("#mailtoBtn").addEventListener("click",()=>{
+        const subject=encodeURIComponent(`Financial statements for review — ${$("#companyName").value} — FY ${$("#financialYear").value}`);
+        const body=encodeURIComponent($("#emailText").value);
+        window.location.href=`mailto:?subject=${subject}&body=${body}`;
+      });
+      $("#packBtn").addEventListener("click",()=>{
+        const html=htmlDocument(`${$("#companyName").value} — draft review pack`,outputBody());
+        download(`${filenameBase()}-draft-review-pack.html`,html,"text/html;charset=utf-8");
+        notify("Draft review pack downloaded as a self-contained HTML document.");
+      });
+    }
+    bind();
+    makeDemo();
+  })();
+  </script>
+</body>
+</html>
